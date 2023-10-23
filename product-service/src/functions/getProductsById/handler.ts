@@ -7,13 +7,38 @@ import {
 } from "@libs/api-gateway";
 import { middyfy } from "@libs/lambda";
 
+const AWS = require("aws-sdk");
+const dynamo = new AWS.DynamoDB.DocumentClient();
+
+const getProduct = async (id) => {
+  const productQueryResult = await dynamo
+    .query({
+      TableName: process.env.PRODUCTS_TABLE_NAME,
+      KeyConditionExpression: "id = :id",
+      ExpressionAttributeValues: { ":id": id },
+    })
+    .promise();
+  const stockQueryResult = await dynamo
+    .query({
+      TableName: process.env.STOCKS_TABLE_NAME,
+      KeyConditionExpression: "product_id = :id",
+      ExpressionAttributeValues: { ":id": id },
+    })
+    .promise();
+
+  return {
+    ...productQueryResult.Items[0],
+    count: stockQueryResult.Items[0].count,
+  };
+};
+
 const getProductsById: ValidatedEventAPIGatewayProxyEvent<unknown> = async (
   event
 ) => {
+  console.log(event);
   try {
     const { productId } = event.pathParameters;
-    const products = await getProducts();
-    const product = products.find(({ id }) => id === productId);
+    const product = await getProduct(productId);
 
     if (!product) {
       formatNotFoundResponse({
