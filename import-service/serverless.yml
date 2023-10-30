@@ -1,0 +1,39 @@
+service: import-service
+
+frameworkVersion: "3"
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  region: eu-west-1
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - s3:PutObject
+        - s3:GetObject
+        - s3:PutBucketCORS
+      Resource:
+        - arn:aws:s3:::pk-cloudx-upload-bucket/*
+        - arn:aws:s3:::pk-cloudx-upload-bucket/uploaded/*
+
+functions:
+  importProductsFile:
+    handler: handler.importProductsFile
+    events:
+      - http:
+          path: import
+          method: get
+          request:
+            parameters:
+              querystrings:
+                name: true
+
+  importFileParser:
+    handler: handler.importFileParser
+    events:
+      - s3:
+          bucket: pk-cloudx-upload-bucket
+          event: s3:ObjectCreated:*
+          rules:
+            - prefix: uploaded/
+            - suffix: .csv

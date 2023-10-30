@@ -1,0 +1,11 @@
+{
+  "name": "import-service",
+  "version": "1.0.0",
+  "description": "",
+  "main": "handler.js",
+  "dependencies": {
+    "csv-parser": "^2.3.2"
+  },
+  "author": "",
+  "license": "MIT"
+}
