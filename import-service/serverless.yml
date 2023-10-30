@@ -6,16 +6,41 @@ provider:
   name: aws
   runtime: nodejs14.x
   region: eu-west-1
-  iamRoleStatements:
-    - Effect: Allow
-      Action:
-        - s3:PutObject
-        - s3:GetObject
-        - s3:PutBucketCORS
-      Resource:
-        - arn:aws:s3:::pk-cloudx-upload-bucket/*
-        - arn:aws:s3:::pk-cloudx-upload-bucket/uploaded/*
-
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - s3:PutObject
+            - s3:GetObject
+            - s3:PutBucketCORS
+            - s3:DeleteObject
+          Resource:
+            - Fn::Join:
+                - ""
+                - - "arn:aws:s3:::"
+                  - Ref: UploadBucket
+                  - "/*"
+        - Effect: Allow
+          Action:
+            - sqs:SendMessage
+          Resource: "arn:aws:sqs:eu-west-1:975310027005:product-service-dev-CatalogItemsQueue-sOU3hWAbDSpz"
+resources:
+  Resources:
+    UploadBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: pk-cloudx-upload-bucket
+        CorsConfiguration:
+          CorsRules:
+            - AllowedOrigins:
+                - "https://dyo5nc6rxggir.cloudfront.net"
+              AllowedMethods:
+                - "GET"
+                - "PUT"
+                - "POST"
+              AllowedHeaders:
+                - "*"
 functions:
   importProductsFile:
     handler: handler.importProductsFile
@@ -32,8 +57,10 @@ functions:
     handler: handler.importFileParser
     events:
       - s3:
-          bucket: pk-cloudx-upload-bucket
+          bucket:
+            Ref: UploadBucket
           event: s3:ObjectCreated:*
           rules:
             - prefix: uploaded/
             - suffix: .csv
+          existing: true

@@ -4,6 +4,7 @@ import {
   getProductsList,
   getProductsById,
   createProduct,
+  catalogBatchProcess,
 } from "@functions/index";
 
 const serverlessConfiguration: AWS = {
@@ -23,6 +24,9 @@ const serverlessConfiguration: AWS = {
       NODE_OPTIONS: "--enable-source-maps --stack-trace-limit=1000",
       PRODUCTS_TABLE_NAME: { Ref: "ProductsTable" },
       STOCKS_TABLE_NAME: { Ref: "StocksTable" },
+      CREATE_PRODUCT_TOPIC_ARN: {
+        Ref: "CreateProductTopic",
+      },
     },
     iam: {
       role: {
@@ -61,12 +65,35 @@ const serverlessConfiguration: AWS = {
               },
             ],
           },
+          {
+            Effect: "Allow",
+            Action: [
+              "sqs:ReceiveMessage",
+              "sqs:DeleteMessage",
+              "sqs:GetQueueAttributes",
+            ],
+            Resource: {
+              "Fn::GetAtt": ["CatalogItemsQueue", "Arn"],
+            },
+          },
+          {
+            Effect: "Allow",
+            Action: ["sns:Publish"],
+            Resource: {
+              Ref: "CreateProductTopic",
+            },
+          },
         ],
       },
     },
   },
   // import the function via paths
-  functions: { getProductsList, getProductsById, createProduct },
+  functions: {
+    getProductsList,
+    getProductsById,
+    createProduct,
+    catalogBatchProcess,
+  },
   package: { individually: true },
   custom: {
     esbuild: {
@@ -116,6 +143,39 @@ const serverlessConfiguration: AWS = {
               KeyType: "HASH",
             },
           ],
+        },
+      },
+      CatalogItemsQueue: {
+        Type: "AWS::SQS::Queue",
+      },
+      CreateProductTopic: {
+        Type: "AWS::SNS::Topic",
+        Properties: {
+          DisplayName: "Product Creation Topic",
+          TopicName: "createProductTopic",
+        },
+      },
+      CreateProductTopicSubscription: {
+        Type: "AWS::SNS::Subscription",
+        Properties: {
+          Protocol: "email",
+          TopicArn: {
+            Ref: "CreateProductTopic",
+          },
+          Endpoint: "polina_karpova@epam.com",
+        },
+      },
+      SpecialTitleProductSubscription: {
+        Type: "AWS::SNS::Subscription",
+        Properties: {
+          Protocol: "email",
+          TopicArn: {
+            Ref: "CreateProductTopic",
+          },
+          Endpoint: "polina_karpova+1@epam.com",
+          FilterPolicy: {
+            title: ["specialTitle"],
+          },
         },
       },
     },
