@@ -27,6 +27,16 @@ provider:
           Resource: "arn:aws:sqs:eu-west-1:975310027005:product-service-dev-CatalogItemsQueue-sOU3hWAbDSpz"
 resources:
   Resources:
+    GatewayResponseDefault4XX:
+      Type: "AWS::ApiGateway::GatewayResponse"
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "method.request.header.Origin"
+          gatewayresponse.header.Access-Control-Allow-Credentials: "'true'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'*'"
+        ResponseType: DEFAULT_4XX
+        RestApiId:
+          Ref: "ApiGatewayRestApi"
     UploadBucket:
       Type: AWS::S3::Bucket
       Properties:
@@ -48,6 +58,12 @@ functions:
       - http:
           path: import
           method: get
+          cors: true
+          authorizer:
+            arn: arn:aws:lambda:${self:provider.region}:${aws:accountId}:function:authorization-service-dev-basicAuthorizer
+            type: TOKEN
+            identitySource: method.request.header.Authorization
+            resultTtlInSeconds: 0
           request:
             parameters:
               querystrings:
