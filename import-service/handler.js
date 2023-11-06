@@ -1,8 +1,12 @@
 const AWS = require("aws-sdk");
-const S3 = new AWS.S3();
 const csvParser = require("csv-parser");
 
+const S3 = new AWS.S3();
+const sqs = new AWS.SQS();
+
 const BUCKET_NAME = "pk-cloudx-upload-bucket";
+const QUEUE_URL =
+  "https://sqs.eu-west-1.amazonaws.com/975310027005/product-service-dev-CatalogItemsQueue-sOU3hWAbDSpz";
 
 module.exports.importProductsFile = async (event) => {
   const fileName = event.queryStringParameters.name;
@@ -75,8 +79,13 @@ module.exports.importFileParser = async (event) => {
     await new Promise((resolve, reject) => {
       s3Stream
         .pipe(csvParser())
-        .on("data", (record) => {
-          console.log(record); // Log each parsed record to CloudWatch
+        .on("data", async (product) => {
+          await sqs
+            .sendMessage({
+              QueueUrl: QUEUE_URL,
+              MessageBody: JSON.stringify(product),
+            })
+            .promise();
         })
         .on("end", async () => {
           console.log(`Finished parsing file: ${objectKey}`);
