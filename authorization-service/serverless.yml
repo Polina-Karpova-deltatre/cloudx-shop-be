@@ -1,0 +1,38 @@
+service: authorization-service
+
+plugins:
+  - serverless-dotenv-plugin
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  region: eu-west-1
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - lambda:InvokeFunction
+          Resource:
+            - "*"
+
+functions:
+  basicAuthorizer:
+    handler: handler.basicAuthorizer
+    events:
+      - http:
+          path: /authorize
+          method: post
+          authorizer:
+            type: TOKEN
+            name: basicAuthorizer
+
+resources:
+  Resources:
+    BasicAuthorizerInvokePermission:
+      Type: AWS::Lambda::Permission
+      Properties:
+        FunctionName:
+          Ref: BasicAuthorizerLambdaFunction
+        Action: lambda:InvokeFunction
+        Principal: apigateway.amazonaws.com
